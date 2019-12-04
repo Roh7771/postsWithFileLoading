@@ -58,7 +58,7 @@ inputImageEl.addEventListener('change', ev => {
     const [first] = Array.from(ev.currentTarget.files);
     const formData = new FormData();
     formData.append('media', first);
-    fetch('http://localhost:9999/upload', {
+    fetch(`${baseUrl}/upload`, {
         method: 'POST',
         body: formData,
     }).then(resp => {
@@ -67,7 +67,7 @@ inputImageEl.addEventListener('change', ev => {
         }
         return resp.json();
     }).then(data => {
-        const imageUrl = `http://localhost:9999/static/${data.name}`;
+        const imageUrl = `${baseUrl}/static/${data.name}`;
         newPostData.url = imageUrl;
         const imageEl = document.createElement('img');
         imageEl.src = imageUrl;
@@ -383,7 +383,7 @@ function record(type, pressedButton) {
 
                 pressedButton.innerHTML = 'Идет загрузка...'
 
-                fetch('http://localhost:9999/upload', {
+                fetch(`${baseUrl}/upload`, {
                     method: 'POST',
                     body: formData,
                 }).then(resp => {
@@ -392,7 +392,7 @@ function record(type, pressedButton) {
                     }
                     return resp.json();
                 }).then(data => {
-                    const url = `http://localhost:9999/static/${data.name}`;
+                    const url = `${baseUrl}/static/${data.name}`;
                     const recordEl = document.createElement(type);
                     recordEl.src = url;
                     recordEl.controls = true;
