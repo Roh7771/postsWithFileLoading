@@ -1,60 +1,63 @@
-import record from './media'
-
 const baseUrl = 'https://posts-on-express.herokuapp.com';
+// const baseUrl = 'http://localhost:9999';
 let freshestPostId = 0;
 let lastSeenPostId = 0;
 
 const rootEl = document.getElementById('root');
 
 const formEl = document.createElement('form');
-// formEl.enctype = "multipart/form-data";
+formEl.enctype = "multipart/form-data";
 formEl.innerHTML = `
-    <div class="form-group">
-        <label>Введите текст или Url</label>
-        <input class="form-control" data-type="text">
+    <div class="form-group mt-2">
+        <input required placeholder="Введите текст" class="form-control" data-type="text">
     </div>
-    <div class="form-group">
-        <label>Выберите тип поста</label>
-        <select class="form-control" data-type="select">
-            <option>Обычный</option>
-            <option>Картинка</option>
-            <option>Видео</option>
-            <option>Аудио</option>
-        </select>
+    <div class="form-group output d-flex justify-content-center"></div>
+    <div class="form-group d-flex justify-content-center" data-type="btnsCntr">
+        <button class="btn btn-primary mr-2" data-type="audio">Добавить аудиозапись</button>
+        <button class="btn btn-primary mr-2" data-type="video">Добавить видеозапись</button>
+        <label class="mb-0" for="image">
+            <div class="btn btn-primary cursor-pointer" data-type="image">Добавить картинку</div>
+        </label>
+        <input type="file" id='image' name="image">
     </div>
-    <div class="form-group">
-        <button class="btn btn-primary" data-type="audio">Добавить аудиозапись</button>
-        <button class="btn btn-primary" data-type="video">Добавить видеозапись</button>
-        <input type="file" data-type="image" name="image">
-    </div>
-    <div class="embed-responsive embed-responsive-16by9 output">
-        
-    </div>
-    <button class="btn btn-primary" data-type="button">Опубликовать</button>
+    <button type="submit" class="btn btn-primary mx-auto d-block" data-type="button">Опубликовать</button>
 `;
 
-const outputContainer = formEl.querySelector('.output')
+let newPostData = {
+    type: 'Обычный'
+}
+
+const outputContainer = formEl.querySelector('.output');
 
 const audioButtonEl = formEl.querySelector('[data-type=audio]');
+const videoButtonEl = formEl.querySelector('[data-type=video]');
+const imageButtonEl = formEl.querySelector('[data-type=image]');
+const inputImageEl = formEl.querySelector('input[name=image]')
+const addNewPostButtonEl = formEl.querySelector('[data-type=button]');
+const buttonsArray = [addNewPostButtonEl, imageButtonEl, videoButtonEl, audioButtonEl];
+
 audioButtonEl.addEventListener('click', (e) => {
     e.preventDefault();
-    record('audio', outputContainer)
+    record('audio', e.currentTarget);
+    newPostData.type = 'Аудио';
+});
+videoButtonEl.addEventListener('click', (e) => {
+    e.preventDefault();
+    record('video', e.currentTarget);
+    newPostData.type = 'Видео';
 });
 
-const imageButtonEl = formEl.querySelector('[data-type=image]');
-imageButtonEl.addEventListener('change', ev => {
+inputImageEl.addEventListener('change', ev => {
     ev.preventDefault();
-    console.log(ev.currentTarget.files)
-    // File -> Blob (__proto__)
-    // [a, b, c] = [1, 2, 3, 4, 5] -> a - 1, b - 2, ...
+    lockButtons();
+    newPostData.type = 'Картинка';
+    imageButtonEl.innerHTML = 'Идет загрузка...'
     const [first] = Array.from(ev.currentTarget.files);
-    // FormData
     const formData = new FormData();
-    formData.append('image', first);
-    sendEl.disabled = true;
+    formData.append('media', first);
     fetch('http://localhost:9999/upload', {
         method: 'POST',
-        body: formData, // Content-Type: multipart/form-data выставится автоматически
+        body: formData,
     }).then(resp => {
         if (!resp.ok) {
             throw new Error(resp.statusText);
@@ -62,34 +65,24 @@ imageButtonEl.addEventListener('change', ev => {
         return resp.json();
     }).then(data => {
         const imageUrl = `http://localhost:9999/static/${data.name}`;
+        newPostData.url = imageUrl;
         const imageEl = document.createElement('img');
-        urlEl.value = imageUrl;
         imageEl.src = imageUrl;
-        document.body.appendChild(imageEl);
+        outputContainer.appendChild(imageEl);
+        imageButtonEl.innerHTML = 'Загрузка завершена'
     }).catch(e => {
         console.log(e);
     }).finally(() => {
-        sendEl.disabled = false;
+        addNewPostButtonEl.disabled = false;
     });
-    ev.currentTarget.value = ''; // хак для сброса выбранного файла
+    ev.currentTarget.value = '';
 });
 
-const textEl = formEl.querySelector('[data-type=text]');
-textEl.value = localStorage.getItem('text');
-textEl.addEventListener('input', e => {
-    localStorage.setItem('text', e.currentTarget.value);
-})
-const selectEl = formEl.querySelector('[data-type=select]');
-selectEl.value = localStorage.getItem('type') || 'Обычный';
-selectEl.addEventListener('input', e => {
-    localStorage.setItem('type', e.currentTarget.value);
-})
-const addNewPostButonEl = formEl.querySelector('[data-type=button]');
-addNewPostButonEl.addEventListener('click', e => {
+formEl.addEventListener('submit', e => {
     e.preventDefault();
     const data = {
+        ...newPostData,
         text: textEl.value,
-        type: selectEl.value,
     };
     fetch(`${baseUrl}/posts`, {
         body: JSON.stringify(data),
@@ -105,14 +98,30 @@ addNewPostButonEl.addEventListener('click', e => {
     ).then(
         data => {
             textEl.value = '';
-            selectEl.value = 'Обычный';
             localStorage.clear();
+            outputContainer.innerHTML = '';
+            unlockButtons()
+            if (newPostData.type === 'Аудио') {
+                audioButtonEl.innerHTML = 'Добавить аудиозапись';
+            } else if(newPostData.type === 'Видео') {
+                videoButtonEl.innerHTML = 'Добавить видеозапись'
+            } else {
+                imageButtonEl.innerHTML = 'Добавить картинку'
+            }
+            newPostData = {
+                type: 'Обычный'
+            }
             freshPostsRender(data);
         }
     ).catch(error => {
         console.log(error);
     });
+})
 
+const textEl = formEl.querySelector('[data-type=text]');
+textEl.value = localStorage.getItem('text');
+textEl.addEventListener('input', e => {
+    localStorage.setItem('text', e.currentTarget.value);
 })
 
 rootEl.appendChild(formEl);
@@ -250,8 +259,9 @@ function createPost(item) {
     } else if (item.type === 'Картинка') {
         newPostEl.innerHTML = `
             <div class="card">
-                <img src="${item.text}" class="card-img-top">
+                <img src="${item.url}" class="card-img-top">
                 <div class="card-body">
+                    <p class="card-text">${item.text}</p>
                     <button data-action="like" class="btn btn-primary mr-2">❤ ${item.likes}</button>
                     <button data-action="dislike" class="btn btn-primary mr-2">👎</button>
                     <button data-action="delete" class="btn btn-primary">Удалить пост</button>
@@ -262,9 +272,10 @@ function createPost(item) {
         newPostEl.innerHTML = `
             <div class="card">
                 <div class="card-img-top embed-responsive embed-responsive-16by9">
-                    <video src="${item.text}" controls=""></video>
+                    <video src="${item.url}" controls=""></video>
                 </div>
                 <div class="card-body">
+                    <p class="card-text">${item.text}</p>
                     <button data-action="like" class="btn btn-primary mr-2">❤ ${item.likes}</button>
                     <button data-action="dislike" class="btn btn-primary mr-2">👎</button>
                     <button data-action="delete" class="btn btn-primary">Удалить пост</button>
@@ -274,8 +285,9 @@ function createPost(item) {
     } else if (item.type === 'Аудио') {
         newPostEl.innerHTML = `
             <div class="card">
-                <audio controls="" class="card-img-top" src="${item.text}"></audio>
+                <audio controls="" class="card-img-top" src="${item.url}"></audio>
                 <div class="card-body">
+                <p class="card-text">${item.text}</p>
                     <button data-action="like" class="btn btn-primary mr-2">❤ ${item.likes}</button>
                     <button data-action="dislike" class="btn btn-primary mr-2">👎</button>
                     <button data-action="delete" class="btn btn-primary">Удалить пост</button>
@@ -325,6 +337,118 @@ function likesHandler(type, id, button) {
         }
     ).catch(error => {
         console.log(error);
+    })
+}
+
+function record(type, pressedButton) {
+    if (!navigator.mediaDevices) { // !undefined -> true
+        const alertEl = document.createElement('div');
+        alertEl.textContent = 'Your browser not support media!';
+        document.body.appendChild(alertEl);
+        return;
+    }
+
+    if (!window.MediaRecorder) {
+        const alertEl = document.createElement('div');
+        alertEl.textContent = 'Your browser not media recordering! Use Yande Browser.';
+        document.body.appendChild(alertEl);
+        return;
+    }
+
+    const outputEl = document.createElement(type);
+    outputEl.controls = true;
+    outputContainer.appendChild(outputEl);
+
+    lockButtons();
+
+    const recordOptions = {
+        audio: true,
+        video: type === 'video' ? true : false
+    }
+
+    navigator.mediaDevices.getUserMedia(recordOptions)
+        .then(stream => {
+            const mediaRecorder = new MediaRecorder(stream, {
+                mediaType: `${type}/webm`, // MIME TYPE
+            });
+
+            const blobParts = []; // для хранения "кусков" записанного контента
+
+            mediaRecorder.addEventListener('dataavailable', ev => {
+                blobParts.push(ev.data);
+            });
+
+            mediaRecorder.addEventListener('stop', ev => {
+                stream.getTracks().forEach(o => o.stop()); // останавливаем все треки
+                const blob = new Blob(blobParts);
+                outputEl.srcObject = null;
+
+                const formData = new FormData();
+                formData.append('media', blob);
+
+                outputContainer.innerHTML = '';
+
+                pressedButton.innerHTML = 'Идет загрузка...'
+
+                fetch('http://localhost:9999/upload', {
+                    method: 'POST',
+                    body: formData,
+                }).then(resp => {
+                    if (!resp.ok) {
+                        throw new Error(resp.statusText);
+                    }
+                    return resp.json();
+                }).then(data => {
+                    const url = `http://localhost:9999/static/${data.name}`;
+                    const recordEl = document.createElement(type);
+                    recordEl.src = url;
+                    recordEl.controls = true;
+                    outputContainer.appendChild(recordEl);
+                    pressedButton.innerHTML = 'Загрузка завершена';
+                    newPostData.url = url;
+                }).catch(e => {
+                    console.log(e);
+                }).finally(() => {
+                    buttonsArray[0].disabled = false;
+                });
+            });
+
+            mediaRecorder.start();
+            pressedButton.innerHTML = 'Идет запись...'
+            outputEl.srcObject = stream;
+            outputEl.muted = true;
+            outputEl.play();
+
+            setTimeout(() => {
+                mediaRecorder.stop();
+            }, 5000);
+
+        }).catch(e => {
+            console.log(e.message);
+        });
+}
+
+function lockButtons() {
+    buttonsArray.forEach((button) => {
+        if (button.dataset.type === 'image') {
+            button.classList.add('disabled');
+            button.classList.remove('cursor-pointer');
+            button.closest('label').setAttribute('for', '');
+        } else {1
+            button.disabled = 'true';
+        }
+    })
+}
+
+function unlockButtons() {
+    buttonsArray.forEach((button) => {
+        if (button.dataset.type === 'image') {
+            button.classList.remove('disabled');
+            button.classList.add('cursor-pointer');
+            button.closest('label').setAttribute('for', 'image');
+        } else {
+            button.disabled = false;
+        }
     })
 }
 
