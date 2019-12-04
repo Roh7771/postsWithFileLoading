@@ -1,9 +1,37 @@
 .cursor-pointer {
     cursor: pointer;
 }
+.output {
+    position: relative;
+}
 input[name=image] {
     opacity: 0;
     width: 0.01px;
     height: 0.01px;
     position: absolute;
+}
+.close {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    right: 5px;
+    opacity: 0.3;
+}
+.close:hover {
+    opacity: 1;
+    cursor: pointer;
+}
+.close:before, .close:after {
+    position: absolute;
+    left: 9px;
+    content: ' ';
+    height: 20px;
+    width: 2px;
+    background-color: #333;
+}
+.close:before {
+    transform: rotate(45deg);
+}
+.close:after {
+    transform: rotate(-45deg);
 }

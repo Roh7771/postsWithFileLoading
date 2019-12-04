@@ -11,7 +11,8 @@ formEl.innerHTML = `
     <div class="form-group mt-2">
         <input required placeholder="Введите текст" class="form-control" data-type="text">
     </div>
-    <div class="form-group output d-flex justify-content-center"></div>
+    <div class="form-group output d-flex justify-content-center">
+    </div>
     <div class="form-group d-flex justify-content-center" data-type="btnsCntr">
         <button class="btn btn-primary mr-2" data-type="audio">Добавить аудиозапись</button>
         <button class="btn btn-primary mr-2" data-type="video">Добавить видеозапись</button>
@@ -27,6 +28,10 @@ let newPostData = {
     type: 'Обычный'
 }
 
+const closeEl = document.createElement('span');
+closeEl.classList.add('close');
+closeEl.addEventListener('click', fullReset);
+
 const outputContainer = formEl.querySelector('.output');
 
 const audioButtonEl = formEl.querySelector('[data-type=audio]');
@@ -35,17 +40,15 @@ const imageButtonEl = formEl.querySelector('[data-type=image]');
 const inputImageEl = formEl.querySelector('input[name=image]')
 const addNewPostButtonEl = formEl.querySelector('[data-type=button]');
 const buttonsArray = [addNewPostButtonEl, imageButtonEl, videoButtonEl, audioButtonEl];
+const buttonsContainerEl = formEl.querySelector('[data-type=btnsCntr]');
 
-audioButtonEl.addEventListener('click', (e) => {
-    e.preventDefault();
-    record('audio', e.currentTarget);
-    newPostData.type = 'Аудио';
-});
-videoButtonEl.addEventListener('click', (e) => {
-    e.preventDefault();
-    record('video', e.currentTarget);
-    newPostData.type = 'Видео';
-});
+buttonsContainerEl.addEventListener('click', e => {
+    if (e.target.dataset.type === 'audio' || e.target.dataset.type === 'video') {
+        e.preventDefault();
+        record(e.target.dataset.type, e.target);
+        newPostData.type = e.target.dataset.type;
+    }
+})
 
 inputImageEl.addEventListener('change', ev => {
     ev.preventDefault();
@@ -69,7 +72,8 @@ inputImageEl.addEventListener('change', ev => {
         const imageEl = document.createElement('img');
         imageEl.src = imageUrl;
         outputContainer.appendChild(imageEl);
-        imageButtonEl.innerHTML = 'Загрузка завершена'
+        imageButtonEl.innerHTML = 'Загрузка завершена';
+        outputContainer.appendChild(closeEl);
     }).catch(e => {
         console.log(e);
     }).finally(() => {
@@ -99,18 +103,7 @@ formEl.addEventListener('submit', e => {
         data => {
             textEl.value = '';
             localStorage.clear();
-            outputContainer.innerHTML = '';
-            unlockButtons()
-            if (newPostData.type === 'Аудио') {
-                audioButtonEl.innerHTML = 'Добавить аудиозапись';
-            } else if(newPostData.type === 'Видео') {
-                videoButtonEl.innerHTML = 'Добавить видеозапись'
-            } else {
-                imageButtonEl.innerHTML = 'Добавить картинку'
-            }
-            newPostData = {
-                type: 'Обычный'
-            }
+            fullReset();
             freshPostsRender(data);
         }
     ).catch(error => {
@@ -406,10 +399,11 @@ function record(type, pressedButton) {
                     outputContainer.appendChild(recordEl);
                     pressedButton.innerHTML = 'Загрузка завершена';
                     newPostData.url = url;
+                    outputContainer.appendChild(closeEl);
                 }).catch(e => {
                     console.log(e);
                 }).finally(() => {
-                    buttonsArray[0].disabled = false;
+                    addNewPostButtonEl.disabled = false
                 });
             });
 
@@ -434,7 +428,7 @@ function lockButtons() {
             button.classList.add('disabled');
             button.classList.remove('cursor-pointer');
             button.closest('label').setAttribute('for', '');
-        } else {1
+        } else {
             button.disabled = 'true';
         }
     })
@@ -450,6 +444,21 @@ function unlockButtons() {
             button.disabled = false;
         }
     })
+}
+
+function fullReset() {
+    outputContainer.innerHTML = '';
+    unlockButtons();
+    if (newPostData.type === 'Аудио') {
+        audioButtonEl.innerHTML = 'Добавить аудиозапись';
+    } else if (newPostData.type === 'Видео') {
+        videoButtonEl.innerHTML = 'Добавить видеозапись'
+    } else {
+        imageButtonEl.innerHTML = 'Добавить картинку'
+    }
+    newPostData = {
+        type: 'Обычный'
+    }
 }
 
 addOldPosts();
