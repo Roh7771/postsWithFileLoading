@@ -43,10 +43,11 @@ const buttonsArray = [addNewPostButtonEl, imageButtonEl, videoButtonEl, audioBut
 const buttonsContainerEl = formEl.querySelector('[data-type=btnsCntr]');
 
 buttonsContainerEl.addEventListener('click', e => {
-    if (e.target.dataset.type === 'audio' || e.target.dataset.type === 'video') {
+    const type = e.target.dataset.type;
+    if (type === 'audio' || type === 'video') {
         e.preventDefault();
-        record(e.target.dataset.type, e.target);
-        newPostData.type = e.target.dataset.type;
+        record(type, e.target);
+        newPostData.type = type === 'audio' ? 'Аудио' : 'Видео';
     }
 })
 
